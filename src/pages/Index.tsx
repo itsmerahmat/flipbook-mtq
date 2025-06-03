@@ -1,4 +1,3 @@
-
 import FlipBook from '@/components/FlipBook';
 import { BookOpen } from 'lucide-react';
 
@@ -10,13 +9,13 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
       {/* Header */}
-      <header className="text-center py-12">
-        <div className="flex items-center justify-center gap-3 mb-4">
-          <BookOpen className="w-8 h-8 text-blue-600" />
-          <h1 className="text-4xl font-bold text-gray-800">Digital Flipbook Reader</h1>
+      <header className="text-center py-8 sm:py-12 px-2">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3 mb-3 sm:mb-4">
+          <BookOpen className="w-7 h-7 sm:w-8 sm:h-8 text-blue-600" />
+          <h1 className="text-2xl sm:text-4xl font-bold text-gray-800 leading-tight">Digital Flipbook Reader</h1>
         </div>
-        <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-          Experience your PDF books with an interactive flipbook interface.
+        <p className="text-base sm:text-lg text-gray-600 max-w-xs sm:max-w-2xl mx-auto">
+          Experience your PDF books with an interactive flipbook interface.<br className="hidden sm:block" />
           Click on either side of the book to turn pages naturally.
         </p>
       </header>
