@@ -1,12 +1,11 @@
 
-import React from 'react';
 import FlipBook from '@/components/FlipBook';
 import { BookOpen } from 'lucide-react';
 
 const Index = () => {
   // You can replace this with your own PDF file path
   // Place your PDF file in the public folder and update the path accordingly
-  const pdfUrl = '/sample-book.pdf';
+  const pdfUrl = '/buku.pdf';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
@@ -17,7 +16,7 @@ const Index = () => {
           <h1 className="text-4xl font-bold text-gray-800">Digital Flipbook Reader</h1>
         </div>
         <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-          Experience your PDF books with an interactive flipbook interface. 
+          Experience your PDF books with an interactive flipbook interface.
           Click on either side of the book to turn pages naturally.
         </p>
       </header>
