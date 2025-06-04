@@ -204,6 +204,15 @@ const FlipBook: React.FC<FlipBookProps> = ({ pdfUrl }) => {
     (
       <div key="cover-front" className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#a9744f] to-[#6e4b27] text-center select-none">
         <div className="flex flex-col items-center justify-center text-center h-full w-full">
+          {/* <img
+            src="https://www.ulm.ac.id/id/wp-content/uploads/2015/05/Logo-Unlam.png"
+            alt="Logo ULM"
+            className="object-contain mx-auto mb-1"
+            style={{
+              width: 'clamp(64px, 20vw, 120px)',
+              height: 'clamp(64px, 20vw, 120px)'
+            }}
+          /> */}
           <h2 className="text-2xl font-bold text-[#5b3a1b] mb-2">SirohNawawi</h2>
           <p className="text-white">Click to open the book</p>
         </div>
