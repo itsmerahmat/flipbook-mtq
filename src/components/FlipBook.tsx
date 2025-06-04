@@ -14,7 +14,7 @@ const FlipBook: React.FC<FlipBookProps> = ({ pdfUrl }) => {
   const [totalPages, setTotalPages] = useState(0);
   const [pageImages, setPageImages] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const pdfDocRef = useRef<any>(null);
+  const pdfDocRef = useRef<pdfjsLib.PDFDocumentProxy | null>(null);
 
   useEffect(() => {
     const loadPDF = async () => {
@@ -59,27 +59,67 @@ const FlipBook: React.FC<FlipBookProps> = ({ pdfUrl }) => {
     );
   }
 
+  // Hitung apakah jumlah total halaman (cover depan + isi + cover belakang) genap
+  const totalWithCovers = pageImages.length + 2;
+  const needBlank = totalWithCovers % 2 !== 0;
+
+  const pages = [
+    // Cover depan
+    (
+      <div key="cover-front" className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-200 to-purple-200 text-center select-none">
+        <div>
+          <h2 className="text-2xl font-bold text-blue-700 mb-2">Digital Flipbook</h2>
+          <p className="text-gray-700">Click to open the book</p>
+        </div>
+      </div>
+    ),
+    // Halaman isi
+    ...pageImages.map((img, idx) => (
+      <div key={idx} className="w-full h-full flex items-center justify-center bg-white">
+        <img
+          src={img}
+          alt={`Page ${idx + 1}`}
+          className="w-full h-full object-contain select-none"
+          draggable={false}
+          style={{ maxHeight: '100%', maxWidth: '100%' }}
+        />
+      </div>
+    )),
+    // Halaman kosong jika perlu
+    ...(needBlank ? [<div key="blank" className="w-full h-full bg-white" />] : []),
+    // Cover belakang
+    (
+      <div key="cover-back" className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-200 to-blue-200 text-center select-none">
+        <div>
+          <h2 className="text-2xl font-bold text-purple-700 mb-2">The End</h2>
+          <p className="text-gray-700">Thank you for reading!</p>
+        </div>
+      </div>
+    ),
+  ];
+
   return (
     <div className="w-full max-w-6xl mx-auto px-2 sm:px-4">
       <div className="flex justify-center">
         <HTMLFlipBook
-          width={320}
-          height={480}
+          width={400}
+          height={600}
           size="stretch"
-          minWidth={220}
+          minWidth={315}
           maxWidth={800}
-          minHeight={300}
+          minHeight={400}
           maxHeight={900}
           drawShadow={true}
           flippingTime={700}
-          usePortrait={true}
+          usePortrait={false}
           startZIndex={0}
           autoSize={true}
           className="mx-auto shadow-2xl"
-          style={{ width: '100%', maxWidth: 400, height: 'auto' }}
+          style={{ margin: '0 auto' }}
           startPage={0}
           maxShadowOpacity={0.5}
-          showCover={false}
+          showCover={true}
+          renderOnlyPageLengthChange={true}
           mobileScrollSupport={true}
           clickEventForward={true}
           useMouseEvents={true}
@@ -87,21 +127,7 @@ const FlipBook: React.FC<FlipBookProps> = ({ pdfUrl }) => {
           disableFlipByClick={false}
           showPageCorners={true}
         >
-          {pageImages.map((img, idx) => (
-            <div
-              key={idx}
-              className="w-full h-full flex items-center justify-center bg-white"
-              style={{ minHeight: 300 }}
-            >
-              <img
-                src={img}
-                alt={`Page ${idx + 1}`}
-                className="w-full h-full object-contain select-none"
-                draggable={false}
-                style={{ maxHeight: '100%', maxWidth: '100%' }}
-              />
-            </div>
-          ))}
+          {pages}
         </HTMLFlipBook>
       </div>
       <div className="text-center mt-6 text-gray-600">
