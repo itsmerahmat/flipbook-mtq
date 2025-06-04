@@ -3,6 +3,7 @@ import { BookOpen } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
 import HTMLFlipBook from 'react-pageflip';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { Maximize2, Minimize2 } from 'lucide-react';
 
 // Set up PDF.js worker untuk Vite
 pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js';
@@ -22,6 +23,29 @@ const FlipBook: React.FC<FlipBookProps> = ({ pdfUrl }) => {
   const pdfDocRef = useRef<pdfjsLib.PDFDocumentProxy | null>(null);
   const flipBookRef = useRef<React.ComponentRef<typeof HTMLFlipBook> | null>(null);
   const isMobile = useIsMobile();
+  const flipBookContainerRef = useRef<HTMLDivElement | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Fullscreen handlers
+  const handleFullscreen = () => {
+    const elem = flipBookContainerRef.current;
+    if (!elem) return;
+    if (!document.fullscreenElement) {
+      elem.requestFullscreen?.();
+    } else {
+      document.exitFullscreen?.();
+    }
+  };
+
+  useEffect(() => {
+    const onFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', onFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', onFullscreenChange);
+    };
+  }, []);
 
   useEffect(() => {
     const loadPDF = async () => {
@@ -141,7 +165,7 @@ const FlipBook: React.FC<FlipBookProps> = ({ pdfUrl }) => {
     };
 
   return (
-    <div className="w-full max-w-6xl mx-auto px-2 sm:px-4">
+    <div ref={flipBookContainerRef} className="w-full max-w-6xl mx-auto px-2 sm:px-4">
       <div className="flex justify-center">
         <HTMLFlipBook
           ref={flipBookRef}
@@ -184,10 +208,15 @@ const FlipBook: React.FC<FlipBookProps> = ({ pdfUrl }) => {
           >
             Next
           </button>
+          {/* <button
+            onClick={handleFullscreen}
+            className="px-4 py-2 rounded bg-blue-600 text-white font-semibold shadow hover:bg-blue-800 transition flex items-center gap-2"
+            type="button"
+          >
+            {isFullscreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
+            {isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
+          </button> */}
         </div>
-        {/* <div className="text-center text-gray-600 text-sm">
-          Page {currentPage + 1} of {pages.length}
-        </div> */}
       </div>
       <div className="text-center mt-4 text-gray-600">
         <p className="text-sm">
