@@ -16,6 +16,13 @@ interface FlipBookProps {
 // Add this type above your component
 type FlipEvent = { data: number };
 
+// Tipe baru untuk notes
+interface NoteItem {
+  page: number;
+  text: string;
+  createdAt: string;
+}
+
 const FlipBook: React.FC<FlipBookProps> = ({ pdfUrl }) => {
   const [totalPages, setTotalPages] = useState(0);
   const [pageImages, setPageImages] = useState<string[]>([]);
@@ -34,7 +41,7 @@ const FlipBook: React.FC<FlipBookProps> = ({ pdfUrl }) => {
   const [showNotes, setShowNotes] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<number[]>([]);
-  const [notes, setNotes] = useState<{ [page: number]: string }>({});
+  const [notes, setNotes] = useState<NoteItem[]>([]);
   const [noteInput, setNoteInput] = useState('');
   // Dummy TOC (bisa diimprove jika PDF ada TOC)
   const toc = [
@@ -50,7 +57,11 @@ const FlipBook: React.FC<FlipBookProps> = ({ pdfUrl }) => {
 
   // Note logic
   const saveNote = () => {
-    setNotes((prev) => ({ ...prev, [currentPage]: noteInput }));
+    if (!noteInput.trim()) return;
+    setNotes(prev => [
+      ...prev,
+      { page: currentPage, text: noteInput, createdAt: new Date().toISOString() }
+    ]);
     setNoteInput('');
   };
 
@@ -145,6 +156,24 @@ const FlipBook: React.FC<FlipBookProps> = ({ pdfUrl }) => {
       }, 500); // delay agar flipbook sudah siap
     }
   }, [pageImages.length]);
+
+  // Bookmark: load & save ke localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem('flipbook-bookmarks');
+    if (saved) setBookmarks(JSON.parse(saved));
+  }, []);
+  useEffect(() => {
+    localStorage.setItem('flipbook-bookmarks', JSON.stringify(bookmarks));
+  }, [bookmarks]);
+
+  // Notes: load & save ke localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem('flipbook-notes');
+    if (saved) setNotes(JSON.parse(saved));
+  }, []);
+  useEffect(() => {
+    localStorage.setItem('flipbook-notes', JSON.stringify(notes));
+  }, [notes]);
 
   if (isLoading) {
     return (
@@ -257,6 +286,9 @@ const FlipBook: React.FC<FlipBookProps> = ({ pdfUrl }) => {
     );
   };
 
+  // Untuk menampilkan catatan di halaman aktif
+  const notesForCurrentPage = notes.filter(n => n.page === currentPage);
+
   return (
     <div ref={flipBookContainerRef} className="w-full max-w-6xl mx-auto px-2 sm:px-4 relative">
       {/* Progress Bar */}
@@ -303,7 +335,18 @@ const FlipBook: React.FC<FlipBookProps> = ({ pdfUrl }) => {
         <button className="mb-2 px-2 py-1 bg-green-500 text-white rounded" onClick={saveNote}>Simpan Catatan</button>
         <div className="mt-2">
           <div className="font-semibold">Catatan Tersimpan:</div>
-          <div className="text-gray-700 whitespace-pre-line">{notes[currentPage]}</div>
+          {notesForCurrentPage.length === 0 ? (
+            <div className="text-gray-500">Belum ada catatan di halaman ini</div>
+          ) : (
+            <ul className="space-y-2">
+              {notesForCurrentPage.map((n, i) => (
+                <li key={i} className="border-b pb-1">
+                  <div className="text-gray-700 whitespace-pre-line">{n.text}</div>
+                  <div className="text-xs text-gray-400">Halaman {n.page + 1} • {new Date(n.createdAt).toLocaleString()}</div>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </Modal>
       <div className="flex justify-center">
@@ -364,6 +407,13 @@ const FlipBook: React.FC<FlipBookProps> = ({ pdfUrl }) => {
           >
             Next
           </button>
+          {/* <button
+            onClick={handleFullscreen}
+            className={`p-2 rounded bg-white shadow hover:bg-gray-100 ${isFullscreen ? 'text-blue-500' : 'text-gray-400'}`}
+            title={isFullscreen ? 'Keluar Fullscreen' : 'Masuk Fullscreen'}
+          >
+            {isFullscreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
+          </button> */}
         </div>
       </div>
       <div className="text-center mt-4 text-gray-600">
