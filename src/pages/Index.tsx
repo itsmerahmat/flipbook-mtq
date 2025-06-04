@@ -12,10 +12,10 @@ const Index = () => {
       <header className="text-center py-8 sm:py-12 px-2">
         <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3 mb-3 sm:mb-4">
           <BookOpen className="w-7 h-7 sm:w-8 sm:h-8 text-blue-600" />
-          <h1 className="text-2xl sm:text-4xl font-bold text-gray-800 leading-tight">Digital Flipbook Reader</h1>
+          <h1 className="text-2xl sm:text-4xl font-bold text-gray-800 leading-tight">SirohNawawi</h1>
         </div>
         <p className="text-base sm:text-lg text-gray-600 max-w-xs sm:max-w-2xl mx-auto">
-          Experience your PDF books with an interactive flipbook interface.<br className="hidden sm:block" />
+          Experience Hadith of Arbain of Imam Nawawi with an interactive flipbook interface.<br className="hidden sm:block" />
           Click on either side of the book to turn pages naturally.
         </p>
       </header>
@@ -26,7 +26,7 @@ const Index = () => {
       </main>
 
       {/* Footer Instructions */}
-      <footer className="text-center py-8 bg-white border-t">
+      {/* <footer className="text-center py-8 bg-white border-t">
         <div className="max-w-4xl mx-auto px-4">
           <h3 className="text-lg font-semibold text-gray-800 mb-3">
             How to Add Your Own PDF Book
@@ -37,7 +37,7 @@ const Index = () => {
             <p>3. Ensure your PDF file is web-optimized for best performance</p>
           </div>
         </div>
-      </footer>
+      </footer> */}
     </div>
   );
 };
