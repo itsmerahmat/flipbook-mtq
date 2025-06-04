@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { BookOpen } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
 import HTMLFlipBook from 'react-pageflip';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 // Set up PDF.js worker untuk Vite
 pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js';
@@ -10,13 +11,17 @@ interface FlipBookProps {
   pdfUrl: string;
 }
 
+// Add this type above your component
+type FlipEvent = { data: number };
+
 const FlipBook: React.FC<FlipBookProps> = ({ pdfUrl }) => {
   const [totalPages, setTotalPages] = useState(0);
   const [pageImages, setPageImages] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(0);
   const pdfDocRef = useRef<pdfjsLib.PDFDocumentProxy | null>(null);
-  const flipBookRef = useRef<any>(null);
+  const flipBookRef = useRef<React.ComponentRef<typeof HTMLFlipBook> | null>(null);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     const loadPDF = async () => {
@@ -110,25 +115,39 @@ const FlipBook: React.FC<FlipBookProps> = ({ pdfUrl }) => {
       flipBookRef.current.pageFlip().flipNext();
     }
   };
-  const onFlip = (e: any) => {
+  const onFlip = (e: FlipEvent) => {
     setCurrentPage(e.data);
   };
+
+  // Responsive size & mode
+  const flipBookProps = isMobile
+    ? {
+      width: 320,
+      height: 480,
+      minWidth: 180,
+      maxWidth: 400,
+      minHeight: 240,
+      maxHeight: 600,
+      usePortrait: true,
+    }
+    : {
+      width: 400,
+      height: 600,
+      minWidth: 315,
+      maxWidth: 800,
+      minHeight: 400,
+      maxHeight: 900,
+      usePortrait: false,
+    };
 
   return (
     <div className="w-full max-w-6xl mx-auto px-2 sm:px-4">
       <div className="flex justify-center">
         <HTMLFlipBook
           ref={flipBookRef}
-          width={400}
-          height={600}
           size="stretch"
-          minWidth={315}
-          maxWidth={800}
-          minHeight={400}
-          maxHeight={900}
           drawShadow={true}
           flippingTime={700}
-          usePortrait={false}
           startZIndex={0}
           autoSize={true}
           className="mx-auto shadow-2xl"
@@ -144,6 +163,7 @@ const FlipBook: React.FC<FlipBookProps> = ({ pdfUrl }) => {
           disableFlipByClick={false}
           showPageCorners={true}
           onFlip={onFlip}
+          {...flipBookProps}
         >
           {pages}
         </HTMLFlipBook>
