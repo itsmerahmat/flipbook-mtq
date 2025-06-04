@@ -283,9 +283,17 @@ const FlipBook: React.FC<FlipBookProps> = ({ pdfUrl }) => {
 
   // Scroll lock helper
   const lockVerticalScroll = () => {
+    const scrollY = window.scrollY;
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = '100vw';
     document.body.style.overflowY = 'hidden';
     setTimeout(() => {
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.width = '';
       document.body.style.overflowY = '';
+      window.scrollTo(0, scrollY);
     }, 400); // lock sebentar saat animasi flip
   };
 
@@ -361,13 +369,13 @@ const FlipBook: React.FC<FlipBookProps> = ({ pdfUrl }) => {
           >
             Next
           </button>
-          {/* <button
+          <button
             onClick={handleFullscreen}
             className={`p-2 rounded bg-white shadow hover:bg-gray-100 ${isFullscreen ? 'text-blue-500' : 'text-gray-400'}`}
             title={isFullscreen ? 'Keluar Fullscreen' : 'Masuk Fullscreen'}
           >
             {isFullscreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
-          </button> */}
+          </button>
         </div>
       </div>
       <div className="text-center mt-4 text-gray-600">
