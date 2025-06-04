@@ -14,7 +14,9 @@ const FlipBook: React.FC<FlipBookProps> = ({ pdfUrl }) => {
   const [totalPages, setTotalPages] = useState(0);
   const [pageImages, setPageImages] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(0);
   const pdfDocRef = useRef<pdfjsLib.PDFDocumentProxy | null>(null);
+  const flipBookRef = useRef<any>(null);
 
   useEffect(() => {
     const loadPDF = async () => {
@@ -66,10 +68,10 @@ const FlipBook: React.FC<FlipBookProps> = ({ pdfUrl }) => {
   const pages = [
     // Cover depan
     (
-      <div key="cover-front" className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-200 to-purple-200 text-center select-none">
-        <div>
-          <h2 className="text-2xl font-bold text-blue-700 mb-2">Digital Flipbook</h2>
-          <p className="text-gray-700">Click to open the book</p>
+      <div key="cover-front" className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#a9744f] to-[#6e4b27] text-center select-none">
+        <div className="flex flex-col items-center justify-center text-center h-full w-full">
+          <h2 className="text-2xl font-bold text-[#5b3a1b] mb-2">Digital Flipbook</h2>
+          <p className="text-white">Click to open the book</p>
         </div>
       </div>
     ),
@@ -89,19 +91,34 @@ const FlipBook: React.FC<FlipBookProps> = ({ pdfUrl }) => {
     ...(needBlank ? [<div key="blank" className="w-full h-full bg-white" />] : []),
     // Cover belakang
     (
-      <div key="cover-back" className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-200 to-blue-200 text-center select-none">
-        <div>
-          <h2 className="text-2xl font-bold text-purple-700 mb-2">The End</h2>
-          <p className="text-gray-700">Thank you for reading!</p>
+      <div key="cover-back" className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#6e4b27] to-[#a9744f] text-center select-none">
+        <div className="flex flex-col items-center justify-center text-center h-full w-full">
+          <h2 className="text-2xl font-bold text-[#5b3a1b] mb-2">The End</h2>
+          <p className="text-white">Thank you for reading!</p>
         </div>
       </div>
     ),
   ];
 
+  const handlePrev = () => {
+    if (flipBookRef.current) {
+      flipBookRef.current.pageFlip().flipPrev();
+    }
+  };
+  const handleNext = () => {
+    if (flipBookRef.current) {
+      flipBookRef.current.pageFlip().flipNext();
+    }
+  };
+  const onFlip = (e: any) => {
+    setCurrentPage(e.data);
+  };
+
   return (
     <div className="w-full max-w-6xl mx-auto px-2 sm:px-4">
       <div className="flex justify-center">
         <HTMLFlipBook
+          ref={flipBookRef}
           width={400}
           height={600}
           size="stretch"
@@ -126,11 +143,33 @@ const FlipBook: React.FC<FlipBookProps> = ({ pdfUrl }) => {
           swipeDistance={30}
           disableFlipByClick={false}
           showPageCorners={true}
+          onFlip={onFlip}
         >
           {pages}
         </HTMLFlipBook>
       </div>
-      <div className="text-center mt-6 text-gray-600">
+      <div className="flex flex-col items-center mt-6 gap-2">
+        <div className="flex gap-4">
+          <button
+            onClick={handlePrev}
+            className="px-4 py-2 rounded bg-[#a9744f] text-white font-semibold shadow hover:bg-[#6e4b27] transition disabled:opacity-50"
+            disabled={currentPage === 0}
+          >
+            Previous
+          </button>
+          <button
+            onClick={handleNext}
+            className="px-4 py-2 rounded bg-[#a9744f] text-white font-semibold shadow hover:bg-[#6e4b27] transition disabled:opacity-50"
+            disabled={currentPage === pages.length - 1}
+          >
+            Next
+          </button>
+        </div>
+        {/* <div className="text-center text-gray-600 text-sm">
+          Page {currentPage + 1} of {pages.length}
+        </div> */}
+      </div>
+      <div className="text-center mt-4 text-gray-600">
         <p className="text-sm">
           Click or swipe to turn pages. Total pages: {totalPages}
         </p>
