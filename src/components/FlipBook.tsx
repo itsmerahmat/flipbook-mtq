@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { BookOpen } from 'lucide-react';
+import { BookOpen, Bookmark, BookmarkCheck, List, Search, StickyNote, Share2, ChevronLeft, ChevronRight } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
 import HTMLFlipBook from 'react-pageflip';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Maximize2, Minimize2 } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 
 // Set up PDF.js worker untuk Vite
 pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js';
@@ -25,6 +26,58 @@ const FlipBook: React.FC<FlipBookProps> = ({ pdfUrl }) => {
   const isMobile = useIsMobile();
   const flipBookContainerRef = useRef<HTMLDivElement | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  // --- Fitur tambahan ---
+  const [bookmarks, setBookmarks] = useState<number[]>([]); // halaman yang dibookmark
+  const [showBookmarks, setShowBookmarks] = useState(false);
+  const [showTOC, setShowTOC] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
+  const [showNotes, setShowNotes] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<number[]>([]);
+  const [notes, setNotes] = useState<{ [page: number]: string }>({});
+  const [noteInput, setNoteInput] = useState('');
+  // Dummy TOC (bisa diimprove jika PDF ada TOC)
+  const toc = [
+    { title: 'Cover', page: 0 },
+    ...pageImages.map((_, idx) => ({ title: `Page ${idx + 1}`, page: idx + 1 })),
+    { title: 'Back Cover', page: pageImages.length + 1 },
+  ];
+
+  // Bookmark logic
+  const toggleBookmark = (page: number) => {
+    setBookmarks((prev) => prev.includes(page) ? prev.filter(p => p !== page) : [...prev, page]);
+  };
+
+  // Note logic
+  const saveNote = () => {
+    setNotes((prev) => ({ ...prev, [currentPage]: noteInput }));
+    setNoteInput('');
+  };
+
+  // Search logic (dummy, hanya cari di judul TOC)
+  const handleSearch = () => {
+    if (!searchQuery) return setSearchResults([]);
+    const query = searchQuery.trim().toLowerCase();
+    let results: number[] = [];
+    // Jika query angka, cari halaman ke-n (1-based)
+    if (/^\d+$/.test(query)) {
+      const idx = parseInt(query, 10) - 1;
+      if (idx >= 0 && idx < toc.length) results = [idx];
+    } else {
+      results = toc.filter(item => item.title.toLowerCase().includes(query)).map(item => item.page);
+    }
+    setSearchResults(results);
+  };
+
+  // Progress bar
+  const progress = ((currentPage + 1) / toc.length) * 100;
+
+  // Share logic (copy url + halaman)
+  const handleShare = () => {
+    const url = `${window.location.origin}${window.location.pathname}?page=${currentPage}`;
+    navigator.clipboard.writeText(url);
+    alert('Link halaman telah disalin!');
+  };
 
   // Fullscreen handlers
   const handleFullscreen = () => {
@@ -75,6 +128,23 @@ const FlipBook: React.FC<FlipBookProps> = ({ pdfUrl }) => {
     };
     loadPDF();
   }, [pdfUrl]);
+
+  // Helper untuk ambil query param
+  function getPageFromQuery() {
+    const params = new URLSearchParams(window.location.search);
+    const page = parseInt(params.get('page') || '', 10);
+    return isNaN(page) ? null : page;
+  }
+
+  useEffect(() => {
+    // Buka halaman dari query jika ada
+    const page = getPageFromQuery();
+    if (page !== null && flipBookRef.current) {
+      setTimeout(() => {
+        flipBookRef.current?.pageFlip().flip(page);
+      }, 500); // delay agar flipbook sudah siap
+    }
+  }, [pageImages.length]);
 
   if (isLoading) {
     return (
@@ -143,6 +213,13 @@ const FlipBook: React.FC<FlipBookProps> = ({ pdfUrl }) => {
     setCurrentPage(e.data);
   };
 
+  // Helper untuk pindah halaman flipbook
+  const goToPage = (page: number) => {
+    if (flipBookRef.current) {
+      flipBookRef.current.pageFlip().flip(page);
+    }
+  };
+
   // Responsive size & mode
   const flipBookProps = isMobile
     ? {
@@ -164,8 +241,71 @@ const FlipBook: React.FC<FlipBookProps> = ({ pdfUrl }) => {
       usePortrait: false,
     };
 
+  // Tambahkan komponen Modal sederhana di dalam FlipBook.tsx
+  const Modal: React.FC<{ open: boolean; onClose: () => void; children: React.ReactNode; title?: string }> = ({ open, onClose, children, title }) => {
+    if (!open) return null;
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+        <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-2 relative animate-fade-in">
+          <button onClick={onClose} className="absolute top-2 right-2 p-1 rounded hover:bg-gray-100 text-gray-500" aria-label="Tutup">
+            <span aria-hidden>×</span>
+          </button>
+          {title && <h3 className="font-bold text-lg px-6 pt-6 pb-2">{title}</h3>}
+          <div className="px-6 pb-6 pt-2">{children}</div>
+        </div>
+      </div>
+    );
+  };
+
   return (
-    <div ref={flipBookContainerRef} className="w-full max-w-6xl mx-auto px-2 sm:px-4">
+    <div ref={flipBookContainerRef} className="w-full max-w-6xl mx-auto px-2 sm:px-4 relative">
+      {/* Progress Bar */}
+      <div className="w-full h-2 bg-gray-200 rounded mt-2 mb-2 overflow-hidden">
+        <div className="h-full bg-blue-500 transition-all" style={{ width: `${progress}%` }} />
+      </div>
+      {/* Modal: TOC */}
+      <Modal open={showTOC} onClose={() => setShowTOC(false)} title="Daftar Isi">
+        <ul className="space-y-1">
+          {toc.map(item => (
+            <li key={item.page}>
+              <button className="text-left w-full hover:underline" onClick={() => { goToPage(item.page); setShowTOC(false); }}>{item.title}</button>
+            </li>
+          ))}
+        </ul>
+      </Modal>
+      {/* Modal: Bookmarks */}
+      <Modal open={showBookmarks} onClose={() => setShowBookmarks(false)} title="Bookmark">
+        {bookmarks.length === 0 ? <div className="text-gray-500">Belum ada bookmark</div> : (
+          <ul className="space-y-1">
+            {bookmarks.map(page => (
+              <li key={page}>
+                <button className="text-left w-full hover:underline" onClick={() => { goToPage(page); setShowBookmarks(false); }}>Halaman {page + 1}</button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Modal>
+      {/* Modal: Search */}
+      <Modal open={showSearch} onClose={() => setShowSearch(false)} title="Cari Halaman">
+        <input type="text" className="w-full border rounded px-2 py-1 mb-2" placeholder="Cari judul..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSearch()} />
+        <button className="mb-2 px-2 py-1 bg-blue-500 text-white rounded" onClick={handleSearch}>Cari</button>
+        <ul className="space-y-1">
+          {searchResults.map(page => (
+            <li key={page}>
+              <button className="text-left w-full hover:underline" onClick={() => { goToPage(page); setShowSearch(false); }}>Halaman {page + 1}</button>
+            </li>
+          ))}
+        </ul>
+      </Modal>
+      {/* Modal: Notes */}
+      <Modal open={showNotes} onClose={() => setShowNotes(false)} title={`Catatan Halaman ${currentPage + 1}`}>
+        <textarea className="w-full border rounded px-2 py-1 mb-2" rows={3} value={noteInput} onChange={e => setNoteInput(e.target.value)} placeholder="Tulis catatan..." />
+        <button className="mb-2 px-2 py-1 bg-green-500 text-white rounded" onClick={saveNote}>Simpan Catatan</button>
+        <div className="mt-2">
+          <div className="font-semibold">Catatan Tersimpan:</div>
+          <div className="text-gray-700 whitespace-pre-line">{notes[currentPage]}</div>
+        </div>
+      </Modal>
       <div className="flex justify-center">
         <HTMLFlipBook
           ref={flipBookRef}
@@ -191,8 +331,24 @@ const FlipBook: React.FC<FlipBookProps> = ({ pdfUrl }) => {
         >
           {pages}
         </HTMLFlipBook>
+        {/* Bookmark tombol di halaman aktif */}
+        <button
+          className={`absolute right-4 top-20 z-10 p-2 rounded-full bg-white shadow ${bookmarks.includes(currentPage) ? 'text-yellow-500' : 'text-gray-400'}`}
+          onClick={() => toggleBookmark(currentPage)}
+          title="Bookmark halaman ini"
+        >
+          {bookmarks.includes(currentPage) ? <BookmarkCheck className="w-6 h-6" /> : <Bookmark className="w-6 h-6" />}
+        </button>
       </div>
-      <div className="flex flex-col items-center mt-6 gap-2">
+      {/* Toolbar fitur pindah ke bawah */}
+      <div className="flex gap-2 justify-center mt-4 mb-2 z-20">
+        <button onClick={() => setShowTOC(v => !v)} className="p-2 bg-white rounded shadow hover:bg-gray-100" title="Daftar Isi"><List className="w-5 h-5" /></button>
+        <button onClick={() => setShowBookmarks(v => !v)} className="p-2 bg-white rounded shadow hover:bg-gray-100" title="Bookmark"><Bookmark className="w-5 h-5" /></button>
+        <button onClick={() => setShowSearch(v => !v)} className="p-2 bg-white rounded shadow hover:bg-gray-100" title="Cari"><Search className="w-5 h-5" /></button>
+        <button onClick={() => setShowNotes(v => !v)} className="p-2 bg-white rounded shadow hover:bg-gray-100" title="Catatan"><StickyNote className="w-5 h-5" /></button>
+        <button onClick={handleShare} className="p-2 bg-white rounded shadow hover:bg-gray-100" title="Bagikan"><Share2 className="w-5 h-5" /></button>
+      </div>
+      <div className="flex flex-col items-center mt-4 gap-2">
         <div className="flex gap-4">
           <button
             onClick={handlePrev}
@@ -208,14 +364,6 @@ const FlipBook: React.FC<FlipBookProps> = ({ pdfUrl }) => {
           >
             Next
           </button>
-          {/* <button
-            onClick={handleFullscreen}
-            className="px-4 py-2 rounded bg-blue-600 text-white font-semibold shadow hover:bg-blue-800 transition flex items-center gap-2"
-            type="button"
-          >
-            {isFullscreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
-            {isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
-          </button> */}
         </div>
       </div>
       <div className="text-center mt-4 text-gray-600">
