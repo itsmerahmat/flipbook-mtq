@@ -235,11 +235,13 @@ const FlipBook: React.FC<FlipBookProps> = ({ pdfUrl }) => {
   ];
 
   const handlePrev = () => {
+    lockVerticalScroll();
     if (flipBookRef.current) {
       flipBookRef.current.pageFlip().flipPrev();
     }
   };
   const handleNext = () => {
+    lockVerticalScroll();
     if (flipBookRef.current) {
       flipBookRef.current.pageFlip().flipNext();
     }
@@ -278,6 +280,14 @@ const FlipBook: React.FC<FlipBookProps> = ({ pdfUrl }) => {
 
   // Untuk menampilkan catatan di halaman aktif
   const notesForCurrentPage = notes.filter(n => n.page === currentPage);
+
+  // Scroll lock helper
+  const lockVerticalScroll = () => {
+    document.body.style.overflowY = 'hidden';
+    setTimeout(() => {
+      document.body.style.overflowY = '';
+    }, 400); // lock sebentar saat animasi flip
+  };
 
   return (
     <div ref={flipBookContainerRef} className="w-full max-w-6xl mx-auto px-2 sm:px-4 relative">
