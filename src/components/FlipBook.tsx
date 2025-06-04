@@ -1,10 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { BookOpen, Bookmark, BookmarkCheck, List, Search, StickyNote, Share2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { BookOpen, Bookmark, BookmarkCheck, List, Search, StickyNote, Share2, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
 import HTMLFlipBook from 'react-pageflip';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Maximize2, Minimize2 } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
+import Modal from './Modal';
+import Toolbar from './Toolbar';
+import NotesModal, { NoteItem } from './NotesModal';
+import BookmarksModal from './BookmarksModal';
+import TOCModal from './TOCModal';
+import SearchModal from './SearchModal';
 
 // Set up PDF.js worker untuk Vite
 pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js';
@@ -15,13 +21,6 @@ interface FlipBookProps {
 
 // Add this type above your component
 type FlipEvent = { data: number };
-
-// Tipe baru untuk notes
-interface NoteItem {
-  page: number;
-  text: string;
-  createdAt: string;
-}
 
 const FlipBook: React.FC<FlipBookProps> = ({ pdfUrl }) => {
   const [totalPages, setTotalPages] = useState(0);
@@ -62,7 +61,6 @@ const FlipBook: React.FC<FlipBookProps> = ({ pdfUrl }) => {
       ...prev,
       { page: currentPage, text: noteInput, createdAt: new Date().toISOString() }
     ]);
-    setNoteInput('');
   };
 
   // Search logic (dummy, hanya cari di judul TOC)
@@ -175,6 +173,14 @@ const FlipBook: React.FC<FlipBookProps> = ({ pdfUrl }) => {
     localStorage.setItem('flipbook-notes', JSON.stringify(notes));
   }, [notes]);
 
+  // Reset searchQuery dan noteInput hanya saat modal ditutup
+  useEffect(() => {
+    if (!showSearch) setSearchQuery('');
+  }, [showSearch]);
+  useEffect(() => {
+    if (!showNotes) setNoteInput('');
+  }, [showNotes]);
+
   if (isLoading) {
     return (
       <div className="w-full max-w-4xl mx-auto p-4 sm:p-8">
@@ -198,7 +204,7 @@ const FlipBook: React.FC<FlipBookProps> = ({ pdfUrl }) => {
     (
       <div key="cover-front" className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#a9744f] to-[#6e4b27] text-center select-none">
         <div className="flex flex-col items-center justify-center text-center h-full w-full">
-          <h2 className="text-2xl font-bold text-[#5b3a1b] mb-2">Digital Flipbook</h2>
+          <h2 className="text-2xl font-bold text-[#5b3a1b] mb-2">SirohNawawi</h2>
           <p className="text-white">Click to open the book</p>
         </div>
       </div>
@@ -270,22 +276,6 @@ const FlipBook: React.FC<FlipBookProps> = ({ pdfUrl }) => {
       usePortrait: false,
     };
 
-  // Tambahkan komponen Modal sederhana di dalam FlipBook.tsx
-  const Modal: React.FC<{ open: boolean; onClose: () => void; children: React.ReactNode; title?: string }> = ({ open, onClose, children, title }) => {
-    if (!open) return null;
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-        <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-2 relative animate-fade-in">
-          <button onClick={onClose} className="absolute top-2 right-2 p-1 rounded hover:bg-gray-100 text-gray-500" aria-label="Tutup">
-            <span aria-hidden>×</span>
-          </button>
-          {title && <h3 className="font-bold text-lg px-6 pt-6 pb-2">{title}</h3>}
-          <div className="px-6 pb-6 pt-2">{children}</div>
-        </div>
-      </div>
-    );
-  };
-
   // Untuk menampilkan catatan di halaman aktif
   const notesForCurrentPage = notes.filter(n => n.page === currentPage);
 
@@ -296,59 +286,13 @@ const FlipBook: React.FC<FlipBookProps> = ({ pdfUrl }) => {
         <div className="h-full bg-blue-500 transition-all" style={{ width: `${progress}%` }} />
       </div>
       {/* Modal: TOC */}
-      <Modal open={showTOC} onClose={() => setShowTOC(false)} title="Daftar Isi">
-        <ul className="space-y-1">
-          {toc.map(item => (
-            <li key={item.page}>
-              <button className="text-left w-full hover:underline" onClick={() => { goToPage(item.page); setShowTOC(false); }}>{item.title}</button>
-            </li>
-          ))}
-        </ul>
-      </Modal>
+      <TOCModal open={showTOC} onClose={() => setShowTOC(false)} toc={toc} goToPage={goToPage} />
       {/* Modal: Bookmarks */}
-      <Modal open={showBookmarks} onClose={() => setShowBookmarks(false)} title="Bookmark">
-        {bookmarks.length === 0 ? <div className="text-gray-500">Belum ada bookmark</div> : (
-          <ul className="space-y-1">
-            {bookmarks.map(page => (
-              <li key={page}>
-                <button className="text-left w-full hover:underline" onClick={() => { goToPage(page); setShowBookmarks(false); }}>Halaman {page + 1}</button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Modal>
+      <BookmarksModal open={showBookmarks} onClose={() => setShowBookmarks(false)} bookmarks={bookmarks} goToPage={goToPage} />
       {/* Modal: Search */}
-      <Modal open={showSearch} onClose={() => setShowSearch(false)} title="Cari Halaman">
-        <input type="text" className="w-full border rounded px-2 py-1 mb-2" placeholder="Cari judul..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSearch()} />
-        <button className="mb-2 px-2 py-1 bg-blue-500 text-white rounded" onClick={handleSearch}>Cari</button>
-        <ul className="space-y-1">
-          {searchResults.map(page => (
-            <li key={page}>
-              <button className="text-left w-full hover:underline" onClick={() => { goToPage(page); setShowSearch(false); }}>Halaman {page + 1}</button>
-            </li>
-          ))}
-        </ul>
-      </Modal>
+      <SearchModal open={showSearch} onClose={() => setShowSearch(false)} searchQuery={searchQuery} setSearchQuery={setSearchQuery} handleSearch={handleSearch} searchResults={searchResults} goToPage={goToPage} />
       {/* Modal: Notes */}
-      <Modal open={showNotes} onClose={() => setShowNotes(false)} title={`Catatan Halaman ${currentPage + 1}`}>
-        <textarea className="w-full border rounded px-2 py-1 mb-2" rows={3} value={noteInput} onChange={e => setNoteInput(e.target.value)} placeholder="Tulis catatan..." />
-        <button className="mb-2 px-2 py-1 bg-green-500 text-white rounded" onClick={saveNote}>Simpan Catatan</button>
-        <div className="mt-2">
-          <div className="font-semibold">Catatan Tersimpan:</div>
-          {notesForCurrentPage.length === 0 ? (
-            <div className="text-gray-500">Belum ada catatan di halaman ini</div>
-          ) : (
-            <ul className="space-y-2">
-              {notesForCurrentPage.map((n, i) => (
-                <li key={i} className="border-b pb-1">
-                  <div className="text-gray-700 whitespace-pre-line">{n.text}</div>
-                  <div className="text-xs text-gray-400">Halaman {n.page + 1} • {new Date(n.createdAt).toLocaleString()}</div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </Modal>
+      <NotesModal open={showNotes} onClose={() => setShowNotes(false)} noteInput={noteInput} setNoteInput={setNoteInput} saveNote={saveNote} notesForCurrentPage={notesForCurrentPage} currentPage={currentPage} />
       <div className="flex justify-center">
         <HTMLFlipBook
           ref={flipBookRef}
@@ -384,13 +328,13 @@ const FlipBook: React.FC<FlipBookProps> = ({ pdfUrl }) => {
         </button>
       </div>
       {/* Toolbar fitur pindah ke bawah */}
-      <div className="flex gap-2 justify-center mt-4 mb-2 z-20">
-        <button onClick={() => setShowTOC(v => !v)} className="p-2 bg-white rounded shadow hover:bg-gray-100" title="Daftar Isi"><List className="w-5 h-5" /></button>
-        <button onClick={() => setShowBookmarks(v => !v)} className="p-2 bg-white rounded shadow hover:bg-gray-100" title="Bookmark"><Bookmark className="w-5 h-5" /></button>
-        <button onClick={() => setShowSearch(v => !v)} className="p-2 bg-white rounded shadow hover:bg-gray-100" title="Cari"><Search className="w-5 h-5" /></button>
-        <button onClick={() => setShowNotes(v => !v)} className="p-2 bg-white rounded shadow hover:bg-gray-100" title="Catatan"><StickyNote className="w-5 h-5" /></button>
-        <button onClick={handleShare} className="p-2 bg-white rounded shadow hover:bg-gray-100" title="Bagikan"><Share2 className="w-5 h-5" /></button>
-      </div>
+      <Toolbar
+        onTOC={() => setShowTOC(v => !v)}
+        onBookmarks={() => setShowBookmarks(v => !v)}
+        onSearch={() => setShowSearch(v => !v)}
+        onNotes={() => setShowNotes(v => !v)}
+        onShare={handleShare}
+      />
       <div className="flex flex-col items-center mt-4 gap-2">
         <div className="flex gap-4">
           <button
