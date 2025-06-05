@@ -206,6 +206,20 @@ const FlipBook: React.FC = () => {
     if (!showNotes) setNoteInput('');
   }, [showNotes]);
 
+  // Setelah hadiths dan splitHadiths siap, cek URL param page (hanya saat data siap)
+  useEffect(() => {
+    if (!isLoading && splitHadiths.length > 0) {
+      const params = new URLSearchParams(window.location.search);
+      const pageParam = params.get('page');
+      if (pageParam) {
+        const pageNum = parseInt(pageParam, 10);
+        if (!isNaN(pageNum) && pageNum >= 0 && pageNum < (splitHadiths.length + 2)) {
+          goToPage(pageNum, { retry: 0 });
+        }
+      }
+    }
+  }, [isLoading, splitHadiths.length]);
+
   if (isLoading) {
     return (
       <div className="w-full max-w-4xl mx-auto p-4 sm:p-8">
@@ -280,9 +294,18 @@ const FlipBook: React.FC = () => {
   };
 
   // Helper untuk pindah halaman flipbook
-  const goToPage = (page: number) => {
-    if (flipBookRef.current) {
-      flipBookRef.current.pageFlip().flip(page);
+  type GoToPageOptions = { retry?: number };
+  const goToPage = (page: number, options: GoToPageOptions = {}) => {
+    if (flipBookRef.current && typeof flipBookRef.current.pageFlip === 'function') {
+      const pageFlipInstance = flipBookRef.current.pageFlip();
+      if (pageFlipInstance && typeof pageFlipInstance.flip === 'function') {
+        pageFlipInstance.flip(page);
+      } else if ((options.retry ?? 0) < 10) {
+        // Retry jika instance belum siap (khusus efek otomatis)
+        setTimeout(() => goToPage(page, { retry: (options.retry ?? 0) + 1 }), 100);
+      }
+    } else if ((options.retry ?? 0) < 10) {
+      setTimeout(() => goToPage(page, { retry: (options.retry ?? 0) + 1 }), 100);
     }
   };
 
