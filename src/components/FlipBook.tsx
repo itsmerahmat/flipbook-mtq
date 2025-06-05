@@ -38,7 +38,8 @@ const FlipBook: React.FC = () => {
   const [showSearch, setShowSearch] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<number[]>([]);
+  // Ubah searchResults menjadi array of object { page, title }
+  const [searchResults, setSearchResults] = useState<{ page: number, title: string }[]>([]);
   const [notes, setNotes] = useState<NoteItem[]>([]);
   const [noteInput, setNoteInput] = useState('');
 
@@ -53,11 +54,59 @@ const FlipBook: React.FC = () => {
       });
   }, []);
 
-  // TOC
+  // Fungsi untuk membagi teks panjang menjadi beberapa halaman
+  function splitHadithText(hadith: HadithItem, maxLength: number) {
+    const { number, arab, id, judul } = hadith;
+    // Gabungkan arab dan id sebagai satu string, pisahkan dengan baris baru
+    const fullText = `${arab}\n\n${id}`;
+    if (fullText.length <= maxLength) {
+      return [{
+        number,
+        judul,
+        text: fullText,
+        part: 1,
+        total: 1,
+      }];
+    }
+    // Bagi berdasarkan batas karakter, usahakan di batas baris
+    const parts = [];
+    let start = 0;
+    let part = 1;
+    while (start < fullText.length) {
+      let end = start + maxLength;
+      // Usahakan potong di akhir baris
+      if (end < fullText.length) {
+        const lastNewline = fullText.lastIndexOf('\n', end);
+        if (lastNewline > start + 100) {
+          end = lastNewline;
+        }
+      }
+      parts.push({
+        number,
+        judul,
+        text: fullText.slice(start, end).trim(),
+        part,
+        total: null, // diisi nanti
+      });
+      start = end;
+      part++;
+    }
+    // Set total part
+    const total = parts.length;
+    return parts.map(p => ({ ...p, total }));
+  }
+
+  const maxHadithLength = isMobile ? 850 : 1600;
+  const splitHadiths = hadiths.flatMap(h => splitHadithText(h, maxHadithLength));
+
+  // TOC sinkron dengan halaman split
   const toc = [
     { title: 'Cover', page: 0 },
-    ...hadiths.map((h, idx) => ({ title: `${h.number}. ${h.judul}`, page: idx + 1 })),
-    { title: 'Back Cover', page: hadiths.length + 1 },
+    ...splitHadiths.map((h, idx) => ({
+      title: `${h.number}. ${h.judul}${h.total > 1 ? ` (Bagian ${h.part}/${h.total})` : ''}`,
+      page: idx + 1
+    })),
+    { title: 'Back Cover', page: splitHadiths.length + 1 },
   ];
 
   // Bookmark logic
@@ -74,19 +123,28 @@ const FlipBook: React.FC = () => {
     ]);
   };
 
-  // Search logic (judul/id/arab)
+  // Search logic (judul/id/arab/terjemahan split)
   const handleSearch = () => {
     if (!searchQuery) return setSearchResults([]);
     const query = searchQuery.trim().toLowerCase();
-    let results: number[] = [];
+    let results: { page: number, title: string }[] = [];
     if (/^\d+$/.test(query)) {
       const idx = parseInt(query, 10) - 1;
-      if (idx >= 0 && idx < hadiths.length) results = [idx + 1];
+      if (idx >= 0 && idx < splitHadiths.length) {
+        const h = splitHadiths[idx];
+        results = [{ page: idx + 1, title: `${h.number}. ${h.judul}${h.total > 1 ? ` (Bagian ${h.part}/${h.total})` : ''}` }];
+      }
     } else {
-      results = hadiths
+      results = splitHadiths
         .map((h, idx) => ({ idx: idx + 1, h }))
-        .filter(({ h }) => h.judul.toLowerCase().includes(query) || h.id.toLowerCase().includes(query) || h.arab.includes(query))
-        .map(({ idx }) => idx);
+        .filter(({ h }) =>
+          h.judul.toLowerCase().includes(query) ||
+          h.text.toLowerCase().includes(query)
+        )
+        .map(({ idx, h }) => ({
+          page: idx,
+          title: `${h.number}. ${h.judul}${h.total > 1 ? ` (Bagian ${h.part}/${h.total})` : ''}`
+        }));
     }
     setSearchResults(results);
   };
@@ -171,24 +229,25 @@ const FlipBook: React.FC = () => {
     (
       <div key="cover-front" className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#a9744f] to-[#6e4b27] text-center select-none">
         <div className="flex flex-col items-center justify-center text-center h-full w-full">
-          <img
+          {/* <img
             src="https://www.ulm.ac.id/id/wp-content/uploads/2015/05/Logo-Unlam.png"
             alt="Logo ULM"
             className="object-contain mx-auto mb-4"
             style={{ width: 'clamp(64px, 20vw, 120px)', height: 'clamp(64px, 20vw, 120px)' }}
-          />
+          /> */}
           <h2 className="text-2xl font-bold text-white mb-2">SirohNawawi</h2>
           <p className="text-gray-200">Click to open the book</p>
         </div>
       </div>
     ),
-    // Halaman isi hadith
-    ...hadiths.map((h, idx) => (
-      <div key={h.number} className="w-full h-full flex flex-col items-center justify-center bg-white px-2 py-6 sm:px-8 sm:py-10 select-text">
-        <div className="text-xs text-gray-400 mb-2">Hadith {h.number}</div>
-        <div className="text-2xl sm:text-3xl text-right font-serif leading-loose mb-4" dir="rtl" lang="ar">{h.arab}</div>
-        <div className="text-base sm:text-lg text-gray-800 mb-2 font-bold text-center">{h.judul}</div>
-        <div className="text-sm sm:text-base text-gray-700 text-center whitespace-pre-line">{h.id}</div>
+    // Halaman isi hadith (sudah di-split)
+    ...splitHadiths.map((h, idx) => (
+      <div key={`${h.number}-${h.part}`} className="w-full h-full flex flex-col items-center justify-center bg-white px-2 py-6 sm:px-8 sm:py-10 select-text">
+        <div className="w-full h-full max-h-full flex flex-col items-center justify-start px-2 sm:px-4 py-2">
+          <div className="text-xs text-gray-400 mb-2">Hadith {h.number}{h.total > 1 ? ` (Bagian ${h.part}/${h.total})` : ''}</div>
+          <div className="text-base sm:text-lg text-gray-800 mb-2 font-bold text-center">{h.judul}</div>
+          <div className="text-sm sm:text-base text-gray-700 text-center whitespace-pre-line" dir="auto">{h.text}</div>
+        </div>
       </div>
     )),
     // Halaman kosong jika perlu

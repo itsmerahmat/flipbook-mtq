@@ -12,7 +12,7 @@ const Modal: React.FC<ModalProps> = ({ open, onClose, children, title }) => {
     if (!open) return null;
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-            <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-2 relative animate-fade-in">
+            <div className="bg-white rounded-lg shadow-xl max-w-xl w-full mx-2 relative animate-fade-in">
                 <button onClick={onClose} className="absolute top-2 right-2 p-1 rounded hover:bg-gray-100 text-gray-500" aria-label="Tutup">
                     <X className="w-4 h-4" />
                 </button>
