@@ -2,10 +2,6 @@ import FlipBook from '@/components/FlipBook';
 import { BookOpen } from 'lucide-react';
 
 const Index = () => {
-  // You can replace this with your own PDF file path
-  // Place your PDF file in the public folder and update the path accordingly
-  const pdfUrl = '/buku.pdf';
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
       {/* Header */}
@@ -22,7 +18,7 @@ const Index = () => {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 pb-12">
-        <FlipBook pdfUrl={pdfUrl} />
+        <FlipBook />
       </main>
 
       {/* Footer Instructions */}
